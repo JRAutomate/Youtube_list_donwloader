@@ -54,8 +54,14 @@ def get_songs_Youtube(Location_file, playlist_Youtube, media="music", renew="tru
 
     for url in new_songs:
         yt = pt.YouTube(url)
-        t = yt.streams.filter(only_audio=True).first() if media == "music" else yt.streams.get_by_itag(22)
-        out_file = t.download(output_path=Location_file)
+        if media == "music":
+            t = yt.streams.filter(only_audio=True).first()  
+        else:
+            try:
+                t=yt.streams.get_by_itag(22) #trying resolution 720
+            except:
+                t=yt.streams.get_by_itag(394) #resolution 360
+        out_file = t.download(output_path=Location_file) 
         base, ext = os.path.splitext(out_file)
 
         if chg_titles == "True":
@@ -88,8 +94,8 @@ def get_songs_Youtube(Location_file, playlist_Youtube, media="music", renew="tru
 # deport_folder = 'C:/Users/Jonathan/OneDrive/Escritorio/Spnning'
 # deport_list = 'https://youtube.com/playlist?list=PLtBFGcNa1-9gENyHUu_sDkZjEzurigc1Y'
 
-folder='C:/Users/Jonathan/OneDrive/Escritorio/Python'
-youtube_list='https://youtube.com/playlist?list=PLtBFGcNa1-9gIwBACKBzRxsGtOodZncfS'
+folder='D:/Users/Jonathan/Videos/Exercise_videos'
+youtube_list='https://youtube.com/playlist?list=PLtBFGcNa1-9gENyHUu_sDkZjEzurigc1Y'
 get_songs_Youtube(Location_file=folder, playlist_Youtube=youtube_list, chg_titles="False", media="video", renew="False")
 
 
@@ -125,10 +131,10 @@ def change_mp4_to_mp3(Music_folder, Location_file):
             mp3_song = MP3(os.path.join(Location_file, mp3_file))
             try:
                 title = base.split('-')[1].split(' (')[0]
-                artist = base.split('-')[0].replace(Location_file + '\\', '')
+                artist = base.split('-')[0].replace(Location_file + '/', '')
             except IndexError:
-                title = 'u' + base.replace(Location_file + '\\', '')
-                artist = 'u' + base.replace(Location_file + '\\', '')
+                title = 'u' + base.replace(Location_file + '/', '')
+                artist = 'u' + base.replace(Location_file + '/', '')
             mp3_song["title"] = title
             mp3_song["artist"] = artist
             mp3_song.save()
