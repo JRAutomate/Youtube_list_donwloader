@@ -59,8 +59,13 @@ def get_songs_Youtube(Location_file, playlist_Youtube, media="music", renew="tru
         else:
             try:
                 t=yt.streams.get_by_itag(22) #trying resolution 720
+                if t is None:
+                    t=yt.streams.get_highest_resolution()
+            except AttributeError:
+                t=yt.streams.get_highest_resolution()
             except:
-                t=yt.streams.get_by_itag(394) #resolution 360
+                print(f"Cannot download video for URL: {url}")
+                continue
         out_file = t.download(output_path=Location_file) 
         base, ext = os.path.splitext(out_file)
 
