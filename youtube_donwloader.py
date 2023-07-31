@@ -88,9 +88,9 @@ def get_songs_Youtube(Location_file, playlist_Youtube, media="music", renew="tru
 # deport_folder = 'C:/Users/Jonathan/OneDrive/Escritorio/Spnning'
 # deport_list = 'https://youtube.com/playlist?list=PLtBFGcNa1-9gENyHUu_sDkZjEzurigc1Y'
 
-programming_folder='C:/Users/Jonathan/OneDrive/Escritorio/Python'
-programming_list='https://youtube.com/playlist?list=PLtBFGcNa1-9gIwBACKBzRxsGtOodZncfS'
-get_songs_Youtube(Location_file=programming_folder, playlist_Youtube=programming_list, chg_titles="False", media="video", renew="False")
+folder='C:/Users/Jonathan/OneDrive/Escritorio/Python'
+youtube_list='https://youtube.com/playlist?list=PLtBFGcNa1-9gIwBACKBzRxsGtOodZncfS'
+get_songs_Youtube(Location_file=folder, playlist_Youtube=youtube_list, chg_titles="False", media="video", renew="False")
 
 
 #########################################################################################################################################
