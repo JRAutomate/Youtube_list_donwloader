@@ -1,146 +1,117 @@
-# -*- coding: utf-8 -*-
-
-needed_libraries=["mutagen","pytube","os","pandas","moviepy"]
-for lib in needed_libraries:
-    try:
-    # Try to import the library
-        import lib
-    except ImportError:
-    # If the library is not installed, install it
-        try:
-            import subprocess
-            import sys
-            subprocess.check_call([sys.executable, "-m", "pip", "install",lib])
-        except Exception as e:
-            print("Error installing the library:", e)
-
 import os
+import subprocess
 import pandas as pd
-import pytube as pt
-from mutagen.mp3 import MP3
-from mutagen.easymp4 import EasyMP4
-from mutagen.id3 import ID3, TIT2, TIT3, TALB, TPE1, TRCK, TYER
-from mutagen.mp4 import MP4
-from mutagen.easyid3 import EasyID3
+import random
+import sys
+from yt_dlp import YoutubeDL
+import argparse
 
-def get_songs_Youtube(Location_file, playlist_Youtube, media="music", renew="true", chg_titles="True"):
-    """
-    Download songs or videos from a YouTube playlist and manage metadata.
+def get_songs_ytdlp(Location_file, playlist_Youtube, media="music", renew="false", randomize="false"):
+    csv_path = os.path.join(Location_file, 'Urls_My_Music.csv')
 
-    Parameters:
-        Location_file (str): The path to the folder where the downloaded files will be saved.
-        playlist_Youtube (str): The URL of the YouTube playlist to download from.
-        media (str, optional): The type of media to download. Default is "music".
-                               Possible values: "music" (audio) or "video" (video).
-        renew (str, optional): Whether to renew the playlist. Default is "true".
-                               Possible values: "true" or "false".
-        chg_titles (str, optional): Whether to change the song/video titles. Default is "True".
-                                    Possible values: "True" or "False".
+    if not os.path.exists(Location_file):
+        sys.exit(f"The path {Location_file} does not exist")
 
-    Returns:
-        None
+    existing_urls = []
+    if renew.lower() == "false" and os.path.exists(csv_path):
+        existing_urls = pd.read_csv(csv_path)["URL"].tolist()
 
-    Notes:
-        - This function uses the PyTube library for downloading YouTube videos.
-        - If media is set to "music", the audio stream will be downloaded.
-        - If media is set to "video", the video stream with the itag 22 will be downloaded.
-        - If renew is set to "true", only the new songs/videos in the playlist will be downloaded.
-        - If chg_titles is set to "True", the metadata (title and artist) of the downloaded files will be updated.
+    ydl_opts = {
+        'quiet': True,
+        'extract_flat': True,
+        'skip_download': True,
+    }
 
-    """
-    playlist_urls = pt.Playlist(playlist_Youtube)
-    playlist_old = pd.read_csv(os.path.join(Location_file, 'Urls_My_Music.csv'), sep=',') if renew == "True" else None
-    new_songs = [url for url in playlist_urls if url not in playlist_old['URL'].to_list()] if renew == "True" else playlist_urls
+    with YoutubeDL(ydl_opts) as ydl:
+        playlist_dict = ydl.extract_info(playlist_Youtube, download=False)
+        all_entries = playlist_dict.get('entries', [])
 
-    for url in new_songs:
-        yt = pt.YouTube(url)
+    new_entries = [entry for entry in all_entries if entry['url'] not in existing_urls] if renew.lower() == "false" else all_entries
+
+    if not new_entries:
+        print(f"The playlist is already fully downloaded.")
+        if randomize.lower() == "true":
+            _randomize_files(Location_file, reset=False)
+        elif randomize.lower() == "reset":
+            _randomize_files(Location_file, reset=True)
+        sys.exit()
+
+    downloaded = []
+
+    for entry in new_entries:
+        video_url = entry['url']
+        title = entry.get('title', 'Unknown').replace(' ', '_')
+        output_template = os.path.join(Location_file, '%(title)s.%(ext)s')
+
         if media == "music":
-            t = yt.streams.filter(only_audio=True).first()  
+            ydl_opts = {
+                'format': 'bestaudio/best',
+                'outtmpl': output_template,
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                }],
+                'quiet': True
+            }
         else:
-            try:
-                t=yt.streams.get_by_itag(22) #trying resolution 720
-                if t is None:
-                    t=yt.streams.get_highest_resolution()
-            except AttributeError:
-                t=yt.streams.get_highest_resolution()
-            except:
-                print(f"Cannot download video for URL: {url}")
-                continue
-        out_file = t.download(output_path=Location_file) 
-        base, ext = os.path.splitext(out_file)
+            ydl_opts = {
+                'format': '22/18/best',
+                'outtmpl': output_template,
+                'quiet': True
+            }
 
-        if chg_titles == "True":
-            try:
-                title = base.split('-')[1].split(' (')[0]
-                artist = base.split('-')[0].replace(Location_file, '')
-                MP4_file = EasyMP4(out_file)
-                MP4_file["title"] = title
-                MP4_file["artist"] = artist
-                MP4_file.save()
-            except IndexError:
-                title = base.replace(Location_file, '')
-                artist = base.replace(Location_file, '')
-            except Exception as e:
-                continue
+        try:
+            with YoutubeDL(ydl_opts) as ydl:
+                ydl.download([video_url])
+                downloaded.append({'URL': video_url, 'Name': title, 'Artist': title})
+                print(f"Downloaded: {title}")
+        except Exception as e:
+            print(f"Failed to download {video_url}: {e}")
 
-            if renew == "True" and media == "music":
-                playlist_old = pd.concat([playlist_old, pd.DataFrame.from_records([{'URL': url, 'Name': title, 'Artist': artist}])])
+    if downloaded:
+        df_new = pd.DataFrame(downloaded)
+        if os.path.exists(csv_path):
+            df_old = pd.read_csv(csv_path)
+            df_new = pd.concat([df_old, df_new])
+        df_new.to_csv(csv_path, index=False)
 
-            playlist_old = playlist_old.append({'URL': url, 'Name': title, 'Artist': artist})
-            print("The song {0} of {1} has been added".format(title, artist))
-        print("The video {0} has been added to  {1}".format(base,Location_file))
+    if randomize.lower() in ["true", "reset"]:
+        _randomize_files(Location_file, reset=(randomize.lower() == "reset"))
 
-    try:
-        playlist_old.to_csv(os.path.join(Location_file, 'Urls_My_Music.csv'), header=True, index=False)
-    except Exception as e:
-        pass
+def _randomize_files(folder, reset=False):
+    files = [f for f in os.listdir(folder) if not f.endswith('.csv') and os.path.isfile(os.path.join(folder,f))]
+    total = len(files)
+    all_numbers = list(range(1, total + 1))
+    random.shuffle(all_numbers)
 
-# Example Usage
-# deport_folder = 'C:/Users/Jonathan/OneDrive/Escritorio/Spnning'
-# deport_list = 'https://youtube.com/playlist?list=PLtBFGcNa1-9gENyHUu_sDkZjEzurigc1Y'
+    for filename in files:
+        full_path = os.path.join(folder, filename)
+        if '_rd_' not in filename:
+            new_filename = f"{all_numbers.pop()}_rd_{filename}"
+        else:
+            base = filename.split('_rd_')[1]
+            new_filename = f"{all_numbers.pop()}_rd_{base}" if not reset else base
+        os.rename(full_path, os.path.join(folder, new_filename))
+    print("Randomization done.")
 
-folder='D:/Users/Jonathan/Videos/Exercise_videos'
-youtube_list='https://youtube.com/playlist?list=PLtBFGcNa1-9gENyHUu_sDkZjEzurigc1Y'
-get_songs_Youtube(Location_file=folder, playlist_Youtube=youtube_list, chg_titles="False", media="video", renew="False")
+# === Example Usage ===
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="🎵 YouTube Playlist Downloader using yt-dlp")
 
-#########################################################################################################################################
-# to change the files of format.
-#########################################################################################################################################
+    parser.add_argument("-folder", required=True, help="Path to the folder where files will be saved")
+    parser.add_argument("-playlist", required=True, help="YouTube playlist URL")
+    parser.add_argument("-media", choices=["music", "video"], default="music", help="Download mode: music (audio) or video")
+    parser.add_argument("-renew", choices=["true", "false"], default="false", help="Whether to redownload even if already saved in CSV")
+    parser.add_argument("-randomize", choices=["true", "false", "reset"], default="false", help="Rename files with random numbers or reset")
 
+    args = parser.parse_args()
 
-from moviepy.editor import *
-
-def change_mp4_to_mp3(Music_folder, Location_file):
-    """
-    Convert mp4 files in a folder to mp3 and update metadata (title and artist).
-
-    Parameters:
-        Music_folder (str): The path to the folder containing the mp4 files.
-        Location_file (str): The path to the folder where the mp3 files will be saved.
-
-    Returns:
-        None
-
-    Notes:
-        - This function uses the moviepy.editor library for converting mp4 to mp3.
-        - The title and artist metadata are extracted from the mp4 file name.
-        - The mp4 files are renamed to mp3 format and saved in the Location_file folder.
-        - The metadata (title and artist) of the mp3 files are updated based on the mp4 file names.
-    """
-    for file_mp4 in os.listdir(Music_folder):
-        if '.mp4' in file_mp4:
-            base, ext = os.path.splitext(file_mp4)
-            mp3_file = base + '.mp3'
-            os.rename(os.path.join(Music_folder, file_mp4), os.path.join(Location_file, mp3_file))
-            mp3_song = MP3(os.path.join(Location_file, mp3_file))
-            try:
-                title = base.split('-')[1].split(' (')[0]
-                artist = base.split('-')[0].replace(Location_file + '/', '')
-            except IndexError:
-                title = 'u' + base.replace(Location_file + '/', '')
-                artist = 'u' + base.replace(Location_file + '/', '')
-            mp3_song["title"] = title
-            mp3_song["artist"] = artist
-            mp3_song.save()
-
+    get_songs_ytdlp(
+        Location_file=args.folder,
+        playlist_Youtube=args.playlist,
+        media=args.media,
+        renew=args.renew,
+        randomize=args.randomize
+    )

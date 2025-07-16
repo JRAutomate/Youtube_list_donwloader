@@ -1,39 +1,83 @@
-YouTube Playlist Downloader
+# YouTube Playlist Downloader with yt-dlp
 
-This Python script allows you to download songs or videos from a YouTube playlist and manage their metadata. You can choose to download either the audio (music) or video content from the playlist.
+This Python script allows you to download songs or videos from a YouTube playlist using [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) and optionally convert them to MP3. It also manages duplicates using a CSV file, and can randomize filenames to avoid repeated order.
 
-Usage
+## 🔧 Features
 
-To use the script, follow these steps:
+- ✅ Supports **audio (MP3)** or **video** download  
+- ✅ Only downloads **new videos** not present in your existing `Urls_My_Music.csv`  
+- ✅ Auto-converts downloaded `.mp4` files to `.mp3` using `ffmpeg`  
+- ✅ Renames files with a random prefix (optional)  
+- ✅ Compatible with any YouTube playlist  
+- ✅ Now supports **command-line arguments**
 
-    Update the folder and youtube_list variables in the script with your desired download location and the URL of the YouTube playlist you want to download from, respectively.
+---
 
-    Run the script using the following command:
+## 📦 Requirements
 
-    python youtube_downloader.py
+- Python 3.8 or higher  
+- [`yt-dlp`](https://github.com/yt-dlp/yt-dlp)  
+- [`ffmpeg`](https://ffmpeg.org/) (only needed if downloading audio)
 
-    The script will download the new songs or videos from the YouTube playlist that are not already present in the downloaded list.
+Install the required Python packages with:
 
-    If chg_titles is set to "True," the metadata (title and artist) of the downloaded files will be updated.
+```bash
+pip install yt-dlp pandas
+```
 
-Function Parameters
+Also ensure that `ffmpeg` is installed and added to your system's PATH.
 
-The function get_songs_Youtube takes the following parameters:
+---
 
-    Location_file (str): The path to the folder where the downloaded files will be saved.
-    playlist_Youtube (str): The URL of the YouTube playlist to download from.
-    media (str, optional): The type of media to download. Default is "music". Possible values: "music" (audio) or "video" (video).
-    renew (str, optional): Whether to renew the playlist. Default is "true". Possible values: "true" or "false".
-    chg_titles (str, optional): Whether to change the song/video titles. Default is "True". Possible values: "True" or "False".
+## 🚀 Usage (Command Line)
 
-Notes
+Run the script with arguments:
 
-    This script uses the PyTube library for downloading YouTube videos.
-    If media is set to "music", the audio stream will be downloaded.
-    If media is set to "video", the video stream with the highest resolution available will be downloaded.
-    If renew is set to "true", only the new songs/videos in the playlist will be downloaded.
-    If chg_titles is set to "True", the metadata (title and artist) of the downloaded files will be updated.
+```bash
+python youtube_downloader_ytdlp.py \
+  -media music \
+  -renew false \
+  -randomize true \
+  -folder "D:/Files/Music" \
+  -playlist "https://youtube.com/playlist?list=YOUR_LIST_ID"
+```
 
-Disclaimer
+### 🎛 Available Arguments
 
-Please use this script responsibly and ensure that you have the right to download and use the content from the YouTube playlist. Respect copyright laws and terms of service. The author is not responsible for any misuse or illegal actions performed using this script.
+| Argument       | Description                                                    |
+|----------------|----------------------------------------------------------------|
+| `-folder`      | Path to the folder where files will be saved                   |
+| `-playlist`    | URL of the YouTube playlist to download                        |
+| `-media`       | `"music"` for audio or `"video"` for full videos               |
+| `-renew`       | `"true"` = redownload all, `"false"` = skip URLs in CSV        |
+| `-randomize`   | `"true"` = rename with random prefix, `"reset"` = revert names |
+
+---
+
+## ⚙️ Script Behavior
+
+- Downloads are saved in the folder defined by `-folder`.
+- Already downloaded URLs are tracked in a CSV file: `Urls_My_Music.csv`.
+- Only new videos not present in that CSV will be downloaded (if `-renew=false`).
+- If `-media=music`, the file will be converted to `.mp3`.
+- If `-randomize=true`, filenames will be renamed using a random prefix like `34_rd_YourSong.mp3`.
+
+---
+
+## 🧩 Function Overview (if used as a module)
+
+```python
+get_songs_ytdlp(
+    Location_file: str,
+    playlist_Youtube: str,
+    media: str = "music",
+    renew: str = "false",
+    randomize: str = "false"
+)
+```
+
+---
+
+## 🛑 Disclaimer
+
+This script is for educational and personal use only. Ensure that you have the right to download and use the content from the YouTube playlist. Respect copyright laws and YouTube's terms of service. The author is not responsible for any misuse or illegal actions performed using this script.
